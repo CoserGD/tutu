@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量上传 - Telegraph Image</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #0d6efd;
+            background-color: #e9f0ff;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .file-name {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-size {
+            margin: 0 10px;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+        .file-remove {
+            cursor: pointer;
+            color: #dc3545;
+        }
+        .progress {
+            height: 5px;
+            margin-top: 5px;
+        }
+        .result-area {
+            margin-top: 20px;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-right: 15px;
+        }
+        .result-info {
+            flex-grow: 1;
+        }
+        .result-actions {
+            white-space: nowrap;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            font-size: 1.5rem;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">批量上传</h3>
+                <div>
+                    <a href="index.html" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> 返回首页
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="upload-area" id="upload-area">
+                    <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                    <h4>拖放文件到这里或点击选择文件</h4>
+                    <p class="text-muted">支持图片和视频文件，单个文件最大5MB</p>
+                    <input type="file" id="file-input" multiple accept="image/*,video/*" style="display: none;">
+                </div>
+
+                <div class="file-list" id="file-list">
+                    <!-- 文件列表将通过JavaScript动态加载 -->
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <div>
+                        <span id="file-count">0</span> 个文件已选择
+                        (<span id="total-size">0</span> MB)
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-danger me-2" id="clear-btn">
+                            <i class="bi bi-trash"></i> 清空
+                        </button>
+                        <button class="btn btn-primary" id="upload-btn" disabled>
+                            <i class="bi bi-cloud-arrow-up"></i> 开始上传
+                        </button>
+                    </div>
+                </div>
+
+                <div class="result-area hidden" id="result-area">
+                    <h4 class="mt-4 mb-3">上传结果</h4>
+                    <div class="alert alert-info" id="result-summary">
+                        <!-- 上传结果摘要将通过JavaScript动态加载 -->
+                    </div>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">上传成功的文件</h5>
+                            <button class="btn btn-sm btn-outline-primary" id="copy-all-btn">
+                                <i class="bi bi-clipboard"></i> 复制所有链接
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="result-list">
+                                <!-- 上传结果列表将通过JavaScript动态加载 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner-border text-light" role="status"></div>
+        <span class="ms-2">上传中，请稍候...</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM元素
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const fileCount = document.getElementById('file-count');
+        const totalSize = document.getElementById('total-size');
+        const clearBtn = document.getElementById('clear-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const resultArea = document.getElementById('result-area');
+        const resultSummary = document.getElementById('result-summary');
+        const resultList = document.getElementById('result-list');
+        const copyAllBtn = document.getElementById('copy-all-btn');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // 全局变量
+        let files = [];
+        let uploadResults = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+        });
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 点击上传区域触发文件选择
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // 文件选择变化
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 拖放文件
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+
+            // 清空按钮
+            clearBtn.addEventListener('click', clearFiles);
+
+            // 上传按钮
+            uploadBtn.addEventListener('click', uploadFiles);
+
+            // 复制所有链接按钮
+            copyAllBtn.addEventListener('click', copyAllLinks);
+        }
+
+        // 处理文件选择
+        function handleFileSelect(e) {
+            handleFiles(e.target.files);
+            fileInput.value = ''; // 重置文件输入，允许重复选择相同文件
+        }
+
+        // 处理文件
+        function handleFiles(fileList) {
+            for (let i = 0; i < fileList.length; i++) {
+                const file = fileList[i];
+                
+                // 检查文件类型
+                if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                    alert(`不支持的文件类型: ${file.name}`);
+                    continue;
+                }
+                
+                // 检查文件大小
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`文件过大 (${formatFileSize(file.size)}): ${file.name}`);
+                    continue;
+                }
+                
+                // 检查是否已存在相同文件
+                if (files.some(f => f.name === file.name && f.size === file.size)) {
+                    continue;
+                }
+                
+                files.push(file);
+            }
+            
+            updateFileList();
+        }
+
+        // 更新文件列表
+        function updateFileList() {
+            fileList.innerHTML = '';
+            
+            if (files.length === 0) {
+                fileCount.textContent = '0';
+                totalSize.textContent = '0';
+                uploadBtn.disabled = true;
+                return;
+            }
+            
+            let totalBytes = 0;
+            
+            files.forEach((file, index) => {
+                totalBytes += file.size;
+                
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const isImage = file.type.startsWith('image/');
+                const isVideo = file.type.startsWith('video/');
+                
+                fileItem.innerHTML = `
+                    <i class="bi ${isImage ? 'bi-image' : isVideo ? 'bi-film' : 'bi-file-earmark'} file-icon"></i>
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                    <i class="bi bi-x-circle file-remove" data-index="${index}"></i>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+            
+            // 添加删除按钮事件
+            document.querySelectorAll('.file-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    files.splice(index, 1);
+                    updateFileList();
+                });
+            });
+            
+            fileCount.textContent = files.length;
+            totalSize.textContent = (totalBytes / (1024 * 1024)).toFixed(2);
+            uploadBtn.disabled = false;
+        }
+
+        // 清空文件
+        function clearFiles() {
+            files = [];
+            updateFileList();
+        }
+
+        // 上传文件
+        async function uploadFiles() {
+            if (files.length === 0) {
+                alert('请先选择文件');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const formData = new FormData();
+                files.forEach(file => {
+                    formData.append('files', file);
+                });
+                
+                const response = await fetch('/api/manage/batchUpload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success || data.results) {
+                    uploadResults = data.results || [];
+                    showResults(data);
+                    clearFiles(); // 上传成功后清空文件列表
+                } else {
+                    showError(data.error || '上传失败');
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 显示上传结果
+        function showResults(data) {
+            resultArea.classList.remove('hidden');
+            
+            // 更新结果摘要
+            resultSummary.innerHTML = `
+                <strong>上传完成!</strong> 共 ${data.total} 个文件，
+                成功 ${data.successful} 个，
+                失败 ${data.failed} 个。
+            `;
+            
+            // 更新结果列表
+            resultList.innerHTML = '';
+            
+            if (data.results.length === 0) {
+                resultList.innerHTML = '<div class="text-center py-4">没有成功上传的文件</div>';
+                return;
+            }
+            
+            data.results.forEach(result => {
+                const isImage = result.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                const isVideo = result.fileName.match(/\.(mp4|webm|mov|avi)$/i);
+                const fullUrl = `${window.location.origin}${result.src}`;
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                resultItem.innerHTML = `
+                    ${isImage ? `<img src="${result.src}" class="result-thumbnail" alt="${result.fileName}">` : 
+                      isVideo ? `<i class="bi bi-film fs-1 text-primary"></i>` : 
+                      `<i class="bi bi-file-earmark fs-1 text-secondary"></i>`}
+                    
+                    <div class="result-info">
+                        <div>${result.fileName}</div>
+                        <div class="input-group input-group-sm mt-1">
+                            <input type="text" class="form-control form-control-sm" value="${fullUrl}" readonly>
+                            <button class="btn btn-outline-secondary copy-btn" data-url="${fullUrl}">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                resultList.appendChild(resultItem);
+            });
+            
+            // 添加复制按钮事件
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const url = btn.dataset.url;
+                    copyToClipboard(url);
+                    showToast('链接已复制到剪贴板');
+                });
+            });
+            
+            // 滚动到结果区域
+            resultArea.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 复制所有链接
+        function copyAllLinks() {
+            if (uploadResults.length === 0) {
+                alert('没有可复制的链接');
+                return;
+            }
+            
+            const links = uploadResults.map(result => `${window.location.origin}${result.src}`).join('\n');
+            copyToClipboard(links);
+            showToast(`已复制 ${uploadResults.length} 个链接到剪贴板`);
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).catch(err => {
+                console.error('复制失败:', err);
+                
+                // 回退方法
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            });
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 显示加载中
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        // 隐藏加载中
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            alert(message);
+        }
+
+        // 显示提示信息
+        function showToast(message) {
+            alert(message); // 简单实现，实际项目中可以使用更美观的toast组件
+        }
+    </script>
+</body>
+</html>

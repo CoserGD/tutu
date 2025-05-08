@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <!-- import CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/theme-chalk/index.css"
+    integrity="sha256-ghr1zmXTODLKl1HULQd6fq1MIe7m3FJiNTOCT8sddLM=" crossorigin="anonymous">
+  <style>
+    .el-image__inner.el-image__inner {
+      width: 100%;
+      height: 90px;
+    }
+
+    .el-image {
+      text-align: center;
+    }
+
+    .el-button+.el-button {
+      margin: 0;
+    }
+  </style>
+  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div id="app">
+    <el-container>
+      <el-header>
+        <div style="
+         margin: auto;
+         line-height: 60px;
+         font-size: xx-large;
+         position: relative;
+     ">Dashboard
+
+
+          <span style="
+     position: absolute;
+     right: 0px;
+      ">
+            <a href="./admin-links.html">
+              <el-button size="mini" type="success">链接管理</el-button>
+            </a>
+            <a href="./admin-imgtc.html">
+              <el-button size="mini" type="warning">网格视图</el-button>
+            </a>
+            <a href="./admin-waterfall.html">
+              <el-button size="mini" type="primary">瀑布流</el-button>
+            </a>
+            <el-button v-if="showLogoutButton" size="mini" type="info" @click="handleLogout()">退出登录</el-button></span>
+        </div>
+      </el-header>
+
+      <el-main>
+        <el-row>
+          <el-col :span="24">
+            <div style="margin-bottom: 20px;">
+              <el-input placeholder="请输入文件名搜索" v-model="search" class="input-with-select" @keyup.enter.native="handleSearch">
+                <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
+              </el-input>
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-row>
+          <el-col :span="24">
+            <div style="margin-bottom: 20px;">
+              <el-tag type="info">总数量: {{total}}</el-tag>
+              <a href="./batch-upload.html" style="margin-left: 10px;">
+                <el-button size="small" type="primary">批量上传</el-button>
+              </a>
+            </div>
+          </el-col>
+        </el-row>
+
+        <el-table v-loading="loading" :data="tableData" style="width: 100%">
+          <el-table-column label="预览" width="120">
+            <template slot-scope="scope">
+              <el-image :src="scope.row.url" :preview-src-list="[scope.row.url]">
+                <div slot="error" class="image-slot">
+                  <i class="el-icon-picture-outline"></i>
+                </div>
+              </el-image>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="文件名" width="180">
+          </el-table-column>
+          <el-table-column prop="metadata" label="状态" width="180">
+            <template slot-scope="scope">
+              <pre>{{ scope.row.metadata }}</pre>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作">
+            <template slot-scope="scope">
+              <el-button size="mini" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
+              <el-button size="mini" type="success" @click="handleWhite(scope.$index, scope.row)">白名单</el-button>
+              <el-button size="mini" type="danger" @click="handleBlock(scope.$index, scope.row)">黑名单</el-button>
+              <el-button size="mini" type="warning" @click="handleDelete(scope.$index, scope.row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div class="block" style="margin-top: 15px;">
+          <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange"
+            :current-page.sync="currentPage" :page-sizes="[10, 20, 50, 100]" :page-size="pageSize"
+            layout="total, sizes, prev, pager, next, jumper" :total="total">
+          </el-pagination>
+        </div>
+      </el-main>
+    </el-container>
+
+    <el-dialog title="编辑" :visible.sync="dialogFormVisible">
+      <el-form :model="form">
+        <el-form-item label="文件名" :label-width="formLabelWidth">
+          <el-input v-model="form.name" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">取 消</el-button>
+        <el-button type="primary" @click="handleEditConfirm">确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+
+  <!-- import Vue before Element -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <!-- import JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.3/lib/index.js"
+    integrity="sha256-HJuoLaWRGMxrJ/zHmvEJd+CsHLxV3qCQcKlSAgMZfSc=" crossorigin="anonymous"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function () {
+        return {
+          visible: false,
+          loading: true,
+          tableData: [],
+          currentPage: 1,
+          pageSize: 10,
+          total: 0,
+          search: '',
+          dialogFormVisible: false,
+          form: {
+            name: '',
+            id: ''
+          },
+          formLabelWidth: '120px',
+          showLogoutButton: false
+        }
+      },
+      created() {
+        this.checkLogin();
+        this.fetchData();
+      },
+      methods: {
+        async checkLogin() {
+          try {
+            const response = await fetch('/api/manage/check');
+            const data = await response.json();
+            this.showLogoutButton = data.isLoggedIn;
+          } catch (error) {
+            console.error('Error checking login status:', error);
+          }
+        },
+        async handleLogout() {
+          try {
+            await fetch('/api/manage/logout');
+            window.location.reload();
+          } catch (error) {
+            console.error('Error logging out:', error);
+          }
+        },
+        async fetchData() {
+          this.loading = true;
+          try {
+            const response = await fetch(`/api/manage/list?page=${this.currentPage}&pageSize=${this.pageSize}&search=${this.search}`);
+            const data = await response.json();
+            this.tableData = data.items.map(item => {
+              return {
+                id: item.name,
+                name: item.metadata.fileName || item.name,
+                url: `/file/${item.name}`,
+                metadata: JSON.stringify(item.metadata, null, 2)
+              };
+            });
+            this.total = data.total;
+          } catch (error) {
+            console.error('Error fetching data:', error);
+            this.$message.error('获取数据失败');
+          } finally {
+            this.loading = false;
+          }
+        },
+        handleSizeChange(val) {
+          this.pageSize = val;
+          this.fetchData();
+        },
+        handleCurrentChange(val) {
+          this.currentPage = val;
+          this.fetchData();
+        },
+        handleEdit(index, row) {
+          this.form.name = row.name;
+          this.form.id = row.id;
+          this.dialogFormVisible = true;
+        },
+        async handleEditConfirm() {
+          try {
+            const response = await fetch(`/api/manage/editName/${this.form.id}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ name: this.form.name })
+            });
+            const data = await response.json();
+            if (data.success) {
+              this.$message.success('编辑成功');
+              this.fetchData();
+            } else {
+              this.$message.error(data.error || '编辑失败');
+            }
+          } catch (error) {
+            console.error('Error editing name:', error);
+            this.$message.error('编辑失败');
+          } finally {
+            this.dialogFormVisible = false;
+          }
+        },
+        async handleWhite(index, row) {
+          try {
+            const response = await fetch(`/api/manage/white/${row.id}`, {
+              method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+              this.$message.success('已添加到白名单');
+              this.fetchData();
+            } else {
+              this.$message.error(data.error || '操作失败');
+            }
+          } catch (error) {
+            console.error('Error adding to whitelist:', error);
+            this.$message.error('操作失败');
+          }
+        },
+        async handleBlock(index, row) {
+          try {
+            const response = await fetch(`/api/manage/block/${row.id}`, {
+              method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+              this.$message.success('已添加到黑名单');
+              this.fetchData();
+            } else {
+              this.$message.error(data.error || '操作失败');
+            }
+          } catch (error) {
+            console.error('Error adding to blacklist:', error);
+            this.$message.error('操作失败');
+          }
+        },
+        async handleDelete(index, row) {
+          try {
+            const response = await fetch(`/api/manage/delete/${row.id}`, {
+              method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+              this.$message.success('删除成功');
+              this.fetchData();
+            } else {
+              this.$message.error(data.error || '删除失败');
+            }
+          } catch (error) {
+            console.error('Error deleting item:', error);
+            this.$message.error('删除失败');
+          }
+        },
+        handleSearch() {
+          this.currentPage = 1;
+          this.fetchData();
+        }
+      }
+    })
+  </script>
+</body>
+
+</html>

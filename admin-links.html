@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>链接管理 - Telegraph Image</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .link-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .link-item:last-child {
+            border-bottom: none;
+        }
+        .link-actions {
+            white-space: nowrap;
+        }
+        .pagination {
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .badge {
+            font-size: 0.75rem;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .export-btn {
+            margin-left: 10px;
+        }
+        .batch-actions {
+            margin-bottom: 20px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            font-size: 1.5rem;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">链接管理</h3>
+                <div>
+                    <a href="admin.html" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> 返回管理页面
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group search-box">
+                            <input type="text" id="search-input" class="form-control" placeholder="搜索文件名...">
+                            <button class="btn btn-primary" id="search-btn">
+                                <i class="bi bi-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="categoryDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                分类筛选
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="categoryDropdown">
+                                <li><a class="dropdown-item category-item" data-category="all" href="#">全部</a></li>
+                                <li><a class="dropdown-item category-item" data-category="liked" href="#">已收藏</a></li>
+                                <li><a class="dropdown-item category-item" data-category="batch" href="#">批量上传</a></li>
+                                <li><a class="dropdown-item category-item" data-category="white" href="#">白名单</a></li>
+                                <li><a class="dropdown-item category-item" data-category="block" href="#">黑名单</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-success export-btn" id="export-btn">
+                            <i class="bi bi-download"></i> 导出链接
+                        </button>
+                    </div>
+                </div>
+
+                <div class="batch-actions">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary batch-action" data-action="copy">
+                            <i class="bi bi-clipboard"></i> 复制选中链接
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success batch-action" data-action="like">
+                            <i class="bi bi-star"></i> 收藏选中
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info batch-action" data-action="whitelist">
+                            <i class="bi bi-check-circle"></i> 加入白名单
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning batch-action" data-action="blacklist">
+                            <i class="bi bi-x-circle"></i> 加入黑名单
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger batch-action" data-action="delete">
+                            <i class="bi bi-trash"></i> 删除选中
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" class="form-check-input" id="select-all">
+                                </th>
+                                <th width="80">预览</th>
+                                <th>文件名</th>
+                                <th>链接</th>
+                                <th>状态</th>
+                                <th>上传时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="links-container">
+                            <!-- 链接列表将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="pagination" class="pagination">
+                    <!-- 分页控件将通过JavaScript动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner-border text-light" role="status"></div>
+        <span class="ms-2">处理中...</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 全局变量
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentCategory = 'all';
+        let currentSearch = '';
+        let currentItems = [];
+
+        // DOM元素
+        const linksContainer = document.getElementById('links-container');
+        const pagination = document.getElementById('pagination');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const categoryItems = document.querySelectorAll('.category-item');
+        const selectAllCheckbox = document.getElementById('select-all');
+        const batchActions = document.querySelectorAll('.batch-action');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLinks();
+            setupEventListeners();
+        });
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 搜索
+            searchBtn.addEventListener('click', () => {
+                currentSearch = searchInput.value.trim();
+                currentPage = 1;
+                loadLinks();
+            });
+            
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentSearch = searchInput.value.trim();
+                    currentPage = 1;
+                    loadLinks();
+                }
+            });
+
+            // 分类筛选
+            categoryItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentCategory = item.dataset.category;
+                    document.getElementById('categoryDropdown').textContent = item.textContent;
+                    currentPage = 1;
+                    loadLinks();
+                });
+            });
+
+            // 导出链接
+            exportBtn.addEventListener('click', exportLinks);
+
+            // 全选/取消全选
+            selectAllCheckbox.addEventListener('change', () => {
+                const checkboxes = document.querySelectorAll('.link-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+
+            // 批量操作
+            batchActions.forEach(button => {
+                button.addEventListener('click', () => {
+                    const action = button.dataset.action;
+                    const selectedIds = getSelectedIds();
+                    
+                    if (selectedIds.length === 0) {
+                        alert('请至少选择一个链接');
+                        return;
+                    }
+
+                    if (action === 'copy') {
+                        copySelectedLinks(selectedIds);
+                    } else {
+                        performBatchAction(action, selectedIds);
+                    }
+                });
+            });
+        }
+
+        // 加载链接列表
+        async function loadLinks() {
+            showLoading();
+            try {
+                const response = await fetch(`/api/manage/linkManage?page=${currentPage}&category=${currentCategory}&search=${encodeURIComponent(currentSearch)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentItems = data.items;
+                    renderLinks(data.items);
+                    renderPagination(data.pagination);
+                } else {
+                    showError(data.error || '加载链接失败');
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 渲染链接列表
+        function renderLinks(items) {
+            linksContainer.innerHTML = '';
+            
+            if (items.length === 0) {
+                linksContainer.innerHTML = '<tr><td colspan="7" class="text-center py-4">没有找到链接</td></tr>';
+                return;
+            }
+
+            items.forEach(item => {
+                const isImage = item.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                const isVideo = item.fileName.match(/\.(mp4|webm|mov|avi)$/i);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="form-check-input link-checkbox" data-id="${item.id}">
+                    </td>
+                    <td>
+                        ${isImage ? `<img src="${item.url}" class="thumbnail" alt="${item.fileName}">` : 
+                          isVideo ? `<i class="bi bi-film fs-1 text-primary"></i>` : 
+                          `<i class="bi bi-file-earmark fs-1 text-secondary"></i>`}
+                    </td>
+                    <td>${item.fileName}</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control form-control-sm" value="${window.location.origin}${item.url}" readonly>
+                            <button class="btn btn-outline-secondary copy-btn" data-url="${window.location.origin}${item.url}">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td>
+                        ${item.listType === 'White' ? '<span class="badge bg-success">白名单</span>' : 
+                          item.listType === 'Block' ? '<span class="badge bg-danger">黑名单</span>' : 
+                          '<span class="badge bg-secondary">普通</span>'}
+                        ${item.liked ? '<span class="badge bg-warning text-dark ms-1">已收藏</span>' : ''}
+                        ${item.batchUpload ? '<span class="badge bg-info text-dark ms-1">批量上传</span>' : ''}
+                    </td>
+                    <td>${formatDate(item.timeStamp)}</td>
+                    <td class="link-actions">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary preview-btn" data-url="${item.url}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-success ${item.liked ? 'unlike-btn' : 'like-btn'}" data-id="${item.id}">
+                                <i class="bi ${item.liked ? 'bi-star-fill' : 'bi-star'}"></i>
+                            </button>
+                            <button class="btn btn-outline-danger delete-btn" data-id="${item.id}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                linksContainer.appendChild(row);
+            });
+
+            // 添加复制按钮事件
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const url = btn.dataset.url;
+                    copyToClipboard(url);
+                    showToast('链接已复制到剪贴板');
+                });
+            });
+
+            // 添加预览按钮事件
+            document.querySelectorAll('.preview-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const url = btn.dataset.url;
+                    window.open(url, '_blank');
+                });
+            });
+
+            // 添加收藏/取消收藏按钮事件
+            document.querySelectorAll('.like-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    performBatchAction('like', [id]);
+                });
+            });
+
+            document.querySelectorAll('.unlike-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    performBatchAction('unlike', [id]);
+                });
+            });
+
+            // 添加删除按钮事件
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (confirm('确定要删除这个链接吗？')) {
+                        const id = btn.dataset.id;
+                        performBatchAction('delete', [id]);
+                    }
+                });
+            });
+        }
+
+        // 渲染分页控件
+        function renderPagination(paginationData) {
+            totalPages = paginationData.totalPages;
+            currentPage = paginationData.page;
+            
+            pagination.innerHTML = '';
+            
+            if (totalPages <= 1) {
+                return;
+            }
+
+            const ul = document.createElement('ul');
+            ul.className = 'pagination';
+
+            // 上一页按钮
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>`;
+            ul.appendChild(prevLi);
+
+            // 页码按钮
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                ul.appendChild(li);
+            }
+
+            // 下一页按钮
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>`;
+            ul.appendChild(nextLi);
+
+            pagination.appendChild(ul);
+
+            // 添加分页事件
+            document.querySelectorAll('.page-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = parseInt(link.dataset.page);
+                    if (page >= 1 && page <= totalPages && page !== currentPage) {
+                        currentPage = page;
+                        loadLinks();
+                    }
+                });
+            });
+        }
+
+        // 执行批量操作
+        async function performBatchAction(action, ids) {
+            if (!confirm(`确定要对选中的 ${ids.length} 个链接执行此操作吗？`)) {
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch('/api/manage/linkManage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action,
+                        ids
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(`操作成功，共处理 ${data.successful} 个链接`);
+                    loadLinks(); // 重新加载链接列表
+                } else {
+                    showError(data.error || '操作失败');
+                }
+            } catch (error) {
+                showError('网络错误，请稍后重试');
+                console.error(error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 复制选中的链接
+        function copySelectedLinks(ids) {
+            const links = currentItems
+                .filter(item => ids.includes(item.id))
+                .map(item => `${window.location.origin}${item.url}`)
+                .join('\n');
+            
+            copyToClipboard(links);
+            showToast(`已复制 ${ids.length} 个链接到剪贴板`);
+        }
+
+        // 导出链接
+        function exportLinks() {
+            const format = prompt('请选择导出格式（输入数字）：\n1. 纯文本链接\n2. CSV格式\n3. JSON格式', '1');
+            
+            if (!format) return;
+            
+            let content = '';
+            let filename = `telegraph-links-${formatDateForFilename(new Date())}.`;
+            
+            switch (format) {
+                case '1':
+                    content = currentItems.map(item => `${window.location.origin}${item.url}`).join('\n');
+                    filename += 'txt';
+                    break;
+                case '2':
+                    content = 'FileName,URL,UploadTime,Status\n';
+                    content += currentItems.map(item => 
+                        `"${item.fileName}","${window.location.origin}${item.url}","${formatDate(item.timeStamp)}","${getStatusText(item)}"`
+                    ).join('\n');
+                    filename += 'csv';
+                    break;
+                case '3':
+                    content = JSON.stringify(currentItems.map(item => ({
+                        fileName: item.fileName,
+                        url: `${window.location.origin}${item.url}`,
+                        uploadTime: formatDate(item.timeStamp),
+                        status: getStatusText(item)
+                    })), null, 2);
+                    filename += 'json';
+                    break;
+                default:
+                    showError('无效的格式选择');
+                    return;
+            }
+            
+            downloadFile(content, filename, format === '1' ? 'text/plain' : format === '2' ? 'text/csv' : 'application/json');
+        }
+
+        // 获取选中的链接ID
+        function getSelectedIds() {
+            const checkboxes = document.querySelectorAll('.link-checkbox:checked');
+            return Array.from(checkboxes).map(checkbox => checkbox.dataset.id);
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).catch(err => {
+                console.error('复制失败:', err);
+                
+                // 回退方法
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            });
+        }
+
+        // 下载文件
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 格式化日期
+        function formatDate(timestamp) {
+            if (!timestamp) return 'Unknown';
+            const date = new Date(timestamp);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 格式化文件名日期
+        function formatDateForFilename(date) {
+            return date.toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+        }
+
+        // 获取状态文本
+        function getStatusText(item) {
+            let status = [];
+            if (item.listType === 'White') status.push('白名单');
+            if (item.listType === 'Block') status.push('黑名单');
+            if (item.liked) status.push('已收藏');
+            if (item.batchUpload) status.push('批量上传');
+            return status.length > 0 ? status.join(',') : '普通';
+        }
+
+        // 显示加载中
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        // 隐藏加载中
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            alert(message);
+        }
+
+        // 显示提示信息
+        function showToast(message) {
+            alert(message); // 简单实现，实际项目中可以使用更美观的toast组件
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegraph Image</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .upload-container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+
+    .upload-area {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-area:hover {
+      border-color: #007bff;
+      background-color: #f8f9fa;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      color: #007bff;
+      margin-bottom: 15px;
+    }
+
+    .upload-text {
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .upload-subtext {
+      color: #999;
+      font-size: 14px;
+    }
+
+    .preview-container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+      display: none;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .preview-image {
+      max-width: 100%;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .url-container {
+      margin-bottom: 20px;
+    }
+
+    .url-label {
+      display: block;
+      margin-bottom: 5px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .url-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .copy-btn {
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+
+    .copy-btn:hover {
+      background-color: #0069d9;
+    }
+
+    .footer {
+      text-align: center;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .footer a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .batch-upload-btn {
+      display: block;
+      width: 100%;
+      background-color: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 15px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    .batch-upload-btn:hover {
+      background-color: #218838;
+    }
+
+    .manage-links-btn {
+      display: block;
+      width: 100%;
+      background-color: #17a2b8;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+
+    .manage-links-btn:hover {
+      background-color: #138496;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+
+      .upload-container {
+        padding: 20px;
+      }
+
+      .upload-area {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Telegraph Image</h1>
+      <p>免费图片托管解决方案，使用 Cloudflare Pages 和 Telegram</p>
+    </div>
+
+    <div class="upload-container">
+      <div class="upload-area" id="upload-area">
+        <i class="bi bi-cloud-arrow-up upload-icon"></i>
+        <h3 class="upload-text">点击或拖放文件到这里上传</h3>
+        <p class="upload-subtext">支持图片和视频文件，单个文件最大5MB</p>
+        <input type="file" id="file-input" style="display: none;">
+      </div>
+      <a href="batch-upload.html" class="batch-upload-btn">
+        <i class="bi bi-images"></i> 批量上传
+      </a>
+      <a href="admin-links.html" class="manage-links-btn">
+        <i class="bi bi-link-45deg"></i> 管理链接
+      </a>
+    </div>
+
+    <div class="preview-container" id="preview-container">
+      <div class="preview-header">
+        <div class="preview-title">上传成功</div>
+        <button class="btn btn-sm btn-outline-secondary" id="close-preview">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <img class="preview-image" id="preview-image" src="" alt="预览图片">
+      <div class="url-container">
+        <label class="url-label">图片链接:</label>
+        <input type="text" class="url-input" id="image-url" readonly>
+        <button class="copy-btn" id="copy-btn">复制链接</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Powered by <a href="https://github.com/cf-pages/Telegraph-Image" target="_blank">Telegraph-Image</a> | <a href="admin.html">管理</a></p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const uploadArea = document.getElementById('upload-area');
+      const fileInput = document.getElementById('file-input');
+      const previewContainer = document.getElementById('preview-container');
+      const previewImage = document.getElementById('preview-image');
+      const imageUrl = document.getElementById('image-url');
+      const copyBtn = document.getElementById('copy-btn');
+      const closePreview = document.getElementById('close-preview');
+
+      // 点击上传区域触发文件选择
+      uploadArea.addEventListener('click', function() {
+        fileInput.click();
+      });
+
+      // 文件选择变化
+      fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          uploadFile(e.target.files[0]);
+        }
+      });
+
+      // 拖放文件
+      uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#007bff';
+        uploadArea.style.backgroundColor = '#f8f9fa';
+      });
+
+      uploadArea.addEventListener('dragleave', function() {
+        uploadArea.style.borderColor = '#ddd';
+        uploadArea.style.backgroundColor = '';
+      });
+
+      uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#ddd';
+        uploadArea.style.backgroundColor = '';
+        
+        if (e.dataTransfer.files.length > 0) {
+          uploadFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      // 复制链接
+      copyBtn.addEventListener('click', function() {
+        imageUrl.select();
+        document.execCommand('copy');
+        copyBtn.textContent = '已复制!';
+        setTimeout(function() {
+          copyBtn.textContent = '复制链接';
+        }, 2000);
+      });
+
+      // 关闭预览
+      closePreview.addEventListener('click', function() {
+        previewContainer.style.display = 'none';
+      });
+
+      // 上传文件
+      function uploadFile(file) {
+        // 检查文件类型
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+          alert('只支持图片和视频文件!');
+          return;
+        }
+
+        // 检查文件大小
+        if (file.size > 5 * 1024 * 1024) {
+          alert('文件大小不能超过5MB!');
+          return;
+        }
+
+        // 创建FormData对象
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 显示上传中状态
+        uploadArea.innerHTML = '<i class="bi bi-arrow-repeat upload-icon"></i><h3 class="upload-text">上传中...</h3>';
+
+        // 发送上传请求
+        fetch('/upload', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          // 恢复上传区域
+          uploadArea.innerHTML = '<i class="bi bi-cloud-arrow-up upload-icon"></i><h3 class="upload-text">点击或拖放文件到这里上传</h3><p class="upload-subtext">支持图片和视频文件，单个文件最大5MB</p>';
+          
+          if (data.length > 0 && data[0].src) {
+            // 显示预览
+            const fileUrl = window.location.origin + data[0].src;
+            
+            if (file.type.startsWith('image/')) {
+              previewImage.src = data[0].src;
+              previewImage.style.display = 'block';
+            } else {
+              previewImage.style.display = 'none';
+            }
+            
+            imageUrl.value = fileUrl;
+            previewContainer.style.display = 'block';
+          } else {
+            alert('上传失败，请重试!');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('上传失败，请重试!');
+          
+          // 恢复上传区域
+          uploadArea.innerHTML = '<i class="bi bi-cloud-arrow-up upload-icon"></i><h3 class="upload-text">点击或拖放文件到这里上传</h3><p class="upload-subtext">支持图片和视频文件，单个文件最大5MB</p>';
+        });
+      }
+    });
+  </script>
+</body>
+
+</html>
